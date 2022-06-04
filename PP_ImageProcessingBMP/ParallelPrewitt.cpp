@@ -15,8 +15,6 @@ class ParallelPrewitt {
 	int* output;
 	int height;
 	int width;
-	/*int filterHor[FILTER_SIZE * FILTER_SIZE];
-	int filterVer[FILTER_SIZE * FILTER_SIZE];*/
 	int* filterHor;
 	int* filterVer;
 public:
