@@ -423,7 +423,6 @@ void usage()
 int main(int argc, char * argv[])
 {
 	string file_name = "cutOff_" + to_string(CUTOFF) + "-filterSize_" + to_string(FILTER_SIZE) + ".txt";
-	cout << file_name;
 	output_prewitt_fs.open("../test_data/PrewittDiffFilterSize/cutOff_" + to_string(CUTOFF) + "-filterSize_" + to_string(FILTER_SIZE) + ".txt");
 	output_prewitt_co.open("../test_data/PrewittDiffCutOff/cutOff_" + to_string(CUTOFF) + "-filterSize_" + to_string(FILTER_SIZE) + ".txt");
 	output_edge_co.open("../test_data/EdgeDetectionCutOff/cutOff_" + to_string(CUTOFF) + "-Depth_" + to_string(DEPTH) + ".txt");
