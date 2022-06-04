@@ -6,8 +6,8 @@ using namespace tbb;
 using namespace std;
 
 #define THRESHOLD 128
-#define FILTER_SIZE				5
-#define DIM_REDUCTION			9
+#define FILTER_SIZE				3
+#define DIM_REDUCTION			1
 #define CUTOFF					350	
 
 class ParallelPrewitt {

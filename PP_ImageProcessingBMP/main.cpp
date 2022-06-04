@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <stdlib.h>
 #include "BitmapRawConverter.h"
 #include "tbb/tick_count.h"
@@ -16,6 +17,10 @@
 
 using namespace std;
 using namespace tbb;
+
+ofstream output_prewitt_fs;
+ofstream output_prewitt_co;
+ofstream output_edge_co;
 
 // Prewitt operators
 int filterHor[FILTER_SIZE * FILTER_SIZE] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
@@ -129,7 +134,7 @@ void  thresholdCutOff(int* inBuffer, int width, int height)
 {
 	for (int i = DEPTH; i < width - DEPTH; i++) {
 		for (int j = 1; j < height - 1; j++) {
-			inBuffer[j * width + i] = inBuffer[j * width + i] - THRESHOLD;
+			inBuffer[j * width + i] = (inBuffer[j * width + i] < THRESHOLD) ? 0 : 1;
 		}
 	}
 }
@@ -219,7 +224,7 @@ void filter_serial_edge_detection(int *inBuffer, int *outBuffer, int width, int 
 			if (p != 0) p = 1;
 			if (o != 0) o = 1;
 
-			outBuffer[currentIndex] = (abs(p) - abs(o) == 0) ? 0 : 255;
+			outBuffer[currentIndex] = (abs(p) - abs(o) == 0) ? 255 : 0;
 		}
 
 	}
@@ -317,7 +322,7 @@ void filter_parallel_edge_detection(int* inBuffer, int* outBuffer, int width, in
 				if (p != 0) p = 1;
 				if (o != 0) o = 1;
 
-				outBuffer[currentIndex] = (abs(p) - abs(o) == 0) ? 0 : 255;
+				outBuffer[currentIndex] = (abs(p) - abs(o) == 0) ? 255 : 0;
 			}
 		}
 	}
@@ -344,11 +349,11 @@ void filter_parallel_edge_detection(int* inBuffer, int* outBuffer, int width, in
 */
 
 
-void run_test_nr(int testNr, BitmapRawConverter* ioFile, char* outFileName, int* outBuffer, unsigned int width, unsigned int height)
+void run_test_nr(int testNr, BitmapRawConverter* ioFile, char* outFileName, int* outBuffer, unsigned int width, unsigned int height, ofstream& file1, ofstream& file2)
 {
 
 	// TODO: start measure
-	
+	string output = "";
 	tick_count start = tick_count::now();
 
 	switch (testNr)
@@ -356,22 +361,27 @@ void run_test_nr(int testNr, BitmapRawConverter* ioFile, char* outFileName, int*
 		case 1:
 			cout << "Running serial version of edge detection using Prewitt operator" << endl;
 			filter_serial_prewitt(ioFile->getBuffer(), outBuffer, width, height);
+			output += "Serial : ";
 			break;
 		case 2:
 			cout << "Running parallel version of edge detection using Prewitt operator" << endl;
 			filter_parallel_prewitt(ioFile->getBuffer(), outBuffer, width, height, DIM_REDUCTION, width - DIM_REDUCTION, DIM_REDUCTION, height - DIM_REDUCTION);
+			output += "Parallel : ";
 			break;
 		case 3:
 			cout << "Running serial version of edge detection" << endl;
 			filter_serial_edge_detection(ioFile->getBuffer(), outBuffer, width, height);
+			output += "Serial : ";
 			break;
 		case 4:
 			cout << "Running parallel version of edge detection" << endl;
 			filter_parallel_edge_detection(ioFile->getBuffer(), outBuffer, width, height, DEPTH, width - DEPTH, DEPTH, height - DEPTH);
+			output += "Parallel : ";
 			break;
 		case 5:
 			cout << "Running parallel version of edge detection using Prewitt operator, parallelized using parallel_for" << endl;
 			filter_prewitt_parallelFor(ioFile->getBuffer(), outBuffer, width, height);
+			output += "ParallelFor : ";
 			break;
 		default:
 			cout << "ERROR: invalid test case, must be 1, 2, 3 or 4!";
@@ -380,8 +390,16 @@ void run_test_nr(int testNr, BitmapRawConverter* ioFile, char* outFileName, int*
 	// TODO: end measure and display time
 
 	tick_count end = tick_count::now();
-
+	output += to_string((end - start).seconds());
 	cout << "\n" << testNr << " : " << (end - start).seconds() << endl;
+
+	if (testNr != 3 && testNr != 4) {
+		file1 << output << "\n";
+		file2 << output << "\n";
+	}
+	else {
+		file1 << output << "\n";
+	}
 
 	ioFile->setBuffer(outBuffer);
 	ioFile->pixelsToBitmap(outFileName);
@@ -404,7 +422,12 @@ void usage()
 
 int main(int argc, char * argv[])
 {
-
+	string file_name = "cutOff_" + to_string(CUTOFF) + "-filterSize_" + to_string(FILTER_SIZE) + ".txt";
+	cout << file_name;
+	output_prewitt_fs.open("../test_data/PrewittDiffFilterSize/cutOff_" + to_string(CUTOFF) + "-filterSize_" + to_string(FILTER_SIZE) + ".txt");
+	output_prewitt_co.open("../test_data/PrewittDiffCutOff/cutOff_" + to_string(CUTOFF) + "-filterSize_" + to_string(FILTER_SIZE) + ".txt");
+	output_edge_co.open("../test_data/EdgeDetectionCutOff/cutOff_" + to_string(CUTOFF) + "-Depth_" + to_string(DEPTH) + ".txt");
+	
 	if(argc != __ARG_NUM__)
 	{
 		usage();
@@ -440,24 +463,27 @@ int main(int argc, char * argv[])
 	memset(outBufferParallelEdge, 0x0, width * height * sizeof(int));
 
 	// serial version Prewitt
-	run_test_nr(1, &outputFileSerialPrewitt, argv[2], outBufferSerialPrewitt, width, height);
+	run_test_nr(1, &outputFileSerialPrewitt, argv[2], outBufferSerialPrewitt, width, height, output_prewitt_fs, output_prewitt_co);
 
 	// parallel version Prewitt
-	run_test_nr(2, &outputFileParallelPrewitt, argv[3], outBufferParallelPrewitt, width, height);
+	run_test_nr(2, &outputFileParallelPrewitt, argv[3], outBufferParallelPrewitt, width, height, output_prewitt_fs, output_prewitt_co);
 
 	thresholdCutOff(outputFileSerialEdge.getBuffer(), width, height);
 
 	// serial version special
-	run_test_nr(3, &outputFileSerialEdge, argv[4], outBufferSerialEdge, width, height);
+	run_test_nr(3, &outputFileSerialEdge, argv[4], outBufferSerialEdge, width, height, output_edge_co , output_edge_co);
 
 	thresholdCutOff(outputFileParallelEdge.getBuffer(), width, height);
 
 	// parallel version special
-	run_test_nr(4, &outputFileParallelEdge, argv[5], outBufferParallelEdge, width, height);
+	run_test_nr(4, &outputFileParallelEdge, argv[5], outBufferParallelEdge, width, height, output_edge_co, output_edge_co);
 
 	// parallel version Prewitt using parallel_for
-	run_test_nr(5, &outputFileParallelEdge, "outputPrewittParallelFor.bmp", outBufferPrewittParallelFor, width, height);
+	run_test_nr(5, &outputFileParallelEdge, "outputPrewittParallelFor.bmp", outBufferPrewittParallelFor, width, height, output_prewitt_fs, output_prewitt_co);
 
+	output_prewitt_fs.close();
+	output_prewitt_co.close();
+	output_edge_co.close();
 
 	// verification
 	cout << "Verification: ";
