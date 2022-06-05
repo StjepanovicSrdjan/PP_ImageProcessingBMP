@@ -1,0 +1,3 @@
+Serial : 1.459150
+Parallel : 0.528664
+ParallelFor : 0.566137
